@@ -4,7 +4,7 @@
 static char* foStrdup(const char* target)
 {
     //In some place, it's not easy to use foStrdup(), because it's not in C standard. So I wrote this.
-    char* newStr = malloc(sizeof(target) + 1);
+    char* newStr = malloc(strlen(target) + 1);
     strcpy(newStr, target);
     return newStr;
 }
