@@ -827,11 +827,20 @@ void replaceTargetText(FoConsole* console)
     char* sourceText = calloc(console->statusBar->window->w + 1, sizeof(char));
     char* targetText = calloc(console->statusBar->window->w + 1, sizeof(char));
     mvwprintw(console->statusBar->window->win, 2, 0, "Replace - Find:");
-    foGetline(console->statusBar->window, 3, 0, sourceText, console->statusBar->window->w);
+    if (foGetline(console->statusBar->window, 3, 0, sourceText, console->statusBar->window->w) == -1)
+    {
+        free(sourceText);
+        return;
+    }
     immediateCleanWindowLine(console->statusBar->window, 2);
     mvwprintw(console->statusBar->window->win, 2, 0, "Replace - Replace:");
     immediateCleanWindowLine(console->statusBar->window, 3);
-    foGetline(console->statusBar->window, 3, 0, targetText, console->statusBar->window->w);
+    if (foGetline(console->statusBar->window, 3, 0, targetText, console->statusBar->window->w) == -1)
+    {
+        free(sourceText);
+        free(targetText);
+        return;
+    }
     strAssign(tempSourceStr, sourceText);
     strAssign(tempTargetStr, targetText);
     FoLineRaw find;
