@@ -1,0 +1,19 @@
+-----------------------FoLic Text Editor---------------------------
+|                                                                 |
+|                            v0.11                                |
+|                                                                 |
+|                                                                 |
+|                     Made by PolarCamphor                        |
+|                                                                 |
+|                 Use Esc Key to switch to toolbar                |
+|                                                                 |
+|                 Use Ctrl+N to create new file                   |
+|                 Use Ctrl+O to open file                         |
+|                 Use Ctrl+Q to exit                              |
+|                                                                 |
+|                                                                 |
+|                    /(O_o)\ \(>_<)/ ~(^-^)~                      |
+|                                                                 |
+|                                                                 |
+|                                                                 |
+-------------------------------------------------------------------
