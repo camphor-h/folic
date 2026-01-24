@@ -50,6 +50,7 @@ FoTextFile* createTextFile(const char* filePath)
     {
         textFile->fileName = NULL;
         textFile->filePath = NULL;
+        textFile->newlineType = DEFAULT_NEWLINE;
     }
     textFile->fileP = NULL;
 
