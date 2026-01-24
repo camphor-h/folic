@@ -296,6 +296,8 @@ void strCopy(FoString* dest, const FoString* source)
     dest->size = source->size;
     dest->length = source->length;
     vecCopy(dest->mapTable, source->mapTable);
+    uint8_t temp = 'P';
+    dest->atTemp = createUtf8char(&temp);
 }
 
 void strAppend(FoString* str, char* cStr)

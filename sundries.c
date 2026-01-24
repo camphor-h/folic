@@ -337,7 +337,7 @@ bool statusBarYOrN(FoConsole* console, const char* message, bool priority)
         {
             return false;
         }
-        else if (key == KEY_ENTER)
+        else if (key == '\n')
         {
             return priority;
         }

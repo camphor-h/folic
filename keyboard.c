@@ -77,7 +77,7 @@ static void keyWithMode(FoConsole* console, int vKey, int keyTryer)
                 curs_set(1);
                 (*(FoToolBarWidgetOption**)vecAt(console->toolWidget->options, console->toolWidget->selectedOption))->operation(console);
                 console->toolWidget = NULL;
-                console->focusTarget = FOCUS_TEXTAREA;
+                console->focusTarget = (console->focusTarget != FOCUS_TEXTAREA_SELECTION ? FOCUS_TEXTAREA : FOCUS_TEXTAREA_SELECTION);
                 widgetIndex = 0;
                 optionIndex = 0;
                 setRerenderAll(console);

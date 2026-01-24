@@ -313,7 +313,8 @@ void freeToolBar(FoToolBar* toolBar)
     freeWindow(toolBar->window);
     for (int i = 0; i < vecGetSize(toolBar->widgets); i++)
     {
-        freeToolBarWidget((FoToolBarWidget*)vecAt(toolBar->widgets, i));
+        FoToolBarWidget* widget = *(FoToolBarWidget**)(FoToolBarWidget*)vecAt(toolBar->widgets, i);
+        freeToolBarWidget(widget);
     }
     freeVec(toolBar->widgets);
     free(toolBar);
