@@ -402,3 +402,22 @@ void textAreaPageDown(FoTextArea* textArea)
     textArea->lineNumbers->window->signal = RERENDER_CONTENT;
     textArea->window->signal = RERENDER_CONTENT;
 }
+
+void textAreaSelectAll(FoConsole* console)
+{
+    if (console->focusTarget != FOCUS_TEXTAREA_SELECTION)
+    {
+        startSelection(console);
+    }
+    
+    console->textArea->selectionArea->anchorLine = console->textArea->textSource->firstLine;
+    console->textArea->selectionArea->anchorLineNumber = 0;
+    console->textArea->selectionArea->anchorLinePos = 0;
+    while (console->textArea->cursor->line->next != NULL)
+    {
+        console->textArea->topLine = console->textArea->topLine->next;
+        cursorPosChange(console->textArea->cursor, CURSOR_MOVE_DOWN);
+    }
+    console->textArea->cursor->linePos = strGetLength(console->textArea->cursor->line->lineString);
+    updateSelectionAreaToCursor(console->textArea->selectionArea, console->textArea->cursor);
+}

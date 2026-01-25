@@ -133,7 +133,8 @@ static bool isFunctionKey(int key)
     
     if (key == KEY_CTRL('s') || key == KEY_CTRL('z') || key == KEY_CTRL('y') || key == KEY_CTRL('o') || 
         key == KEY_CTRL('n') || key == KEY_CTRL('f') || key == KEY_CTRL('h') || key == KEY_CTRL('g') || 
-        key == KEY_CTRL('q') || key == KEY_CTRL('c') || key == KEY_CTRL('v') || key == KEY_CTRL('x'))
+        key == KEY_CTRL('q') || key == KEY_CTRL('c') || key == KEY_CTRL('v') || key == KEY_CTRL('x') ||
+        key == KEY_CTRL('a'))
     {
         return true;
     }
@@ -366,6 +367,9 @@ void functionKey(FoConsole* console, int key)
                 folicQuit(console);
             }
             break;
+        case KEY_CTRL('a'):
+            textAreaSelectAll(console);
+            break;
         case KEY_HOME:
             console->textArea->cursor->linePos = 0;
             break;
@@ -387,6 +391,7 @@ void functionKey(FoConsole* console, int key)
             {
                 endSelection(console);
             }
+            break;
         /*
         case KEY_CTRL(KEY_HOME):
             cursorMoveToLine(console->textArea, console->textArea->textSource->firstLine, 0);

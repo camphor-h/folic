@@ -3,7 +3,7 @@
 static const char* toolBarWidgetNames[] = {" File ", " Edit ", " Help "};
 
 static const FoToolBarWidgetOptionRaw toolBarFileOptions[] = {{"New  (C-n)", initTextAreaAndCreateNewFile}, {"Open (C-o)", statusBarLoadFile}, {"Save (C-s)", statusBarSaveToFile}, {"Save as", statusBarSaveAsFile}, {"Quit (C-q)", folicQuit}};
-static const FoToolBarWidgetOptionRaw toolBarEditOptions[] = {{"Undo (C-z)", undoBehavior}, {"Redo (C-y)", redoBehavior}, {"Find (C-f)", findTargetText}, {"Replace (C-h)", replaceTargetText}, {"Selection", startSelection}};
+static const FoToolBarWidgetOptionRaw toolBarEditOptions[] = {{"Undo (C-z)", undoBehavior}, {"Redo (C-y)", redoBehavior}, {"Find (C-f)", findTargetText}, {"Replace (C-h)", replaceTargetText}, {"Selection", startSelection}, {"Select All (C-a)", textAreaSelectAll}};
 static const FoToolBarWidgetOptionRaw toolBarHelpOptions[] = {{"Welcome", openWelcomePage}, {"About", openAboutPage}, {"Update Log", openUpdateLogPage}};
 
 static const FoToolBarWidgetOptionRaw* toolBarWidgetOptionNames[] = {toolBarFileOptions, toolBarEditOptions, toolBarHelpOptions};
@@ -480,7 +480,7 @@ FoString* getSelectionAreaStr(FoSelectionArea* selectionArea)
         return strSubStr(startLine->lineString, startLinePos, endLinePos - 1);
     }
     FoString* str = createStr();
-    FoString* temp = strSubStr(startLine->lineString, startLinePos, strGetLength(startLine->lineString));
+    FoString* temp = strSubStr(startLine->lineString, startLinePos, strGetLength(startLine->lineString) - 1);
     strAppendStr(str, temp);
 
     FoLine* curLine = startLine->next;

@@ -39,3 +39,8 @@ tool. I apology :(
 Anyway, that's all. Enjoy the crusty editor! Bye!
                                                               PolarCamphor
                                                                2026.01.24
+                                                               
+-----Update Log-----Folic v0.12.01-----
+
+Fix some bugs.
+Add "Select All" Function , Use C-a

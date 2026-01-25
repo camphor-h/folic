@@ -35,6 +35,8 @@ C-f to find text. C-r to replace.
 
 C-g to go to target line.
 
+C-a to select all.
+
 Use Home key to move to the begin of line, the End key to the end of line.
 
 Use F2 Key to enter selection mode. You can use C+c C+v C+x.

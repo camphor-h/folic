@@ -31,4 +31,6 @@ YorN_Selection statusBarYOrNCancel(FoConsole* console, const char* message);
 void textAreaPageUp(FoTextArea* textArea);
 void textAreaPageDown(FoTextArea* textArea);
 
+void textAreaSelectAll(FoConsole* console);
+
 #endif
