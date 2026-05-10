@@ -1,6 +1,17 @@
 CC = cc
 CFLAGS = -std=c99 -Wall -Wextra
-LDFLAGS = -lm -lncursesw -lmenuw -lregex
+
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Windows)
+    LDFLAGS = -lm -lncursesw -lmenuw -lregex
+else ifeq ($(UNAME_S),Msys)
+    LDFLAGS = -lm -lncursesw -lmenuw -lregex
+else ifeq ($(UNAME_S),CYGWIN)
+    LDFLAGS = -lm -lncursesw -lmenuw -lregex
+else
+    LDFLAGS = -lm -lncursesw -lmenuw
+endif
 
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
