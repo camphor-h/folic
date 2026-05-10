@@ -65,17 +65,23 @@ void utf8charToChar(utf8char utf8char_, char* dest, int size)
 void utf8charAssign(utf8char* dest, const char* source)
 {
     int32_t sourceLength = getUtf8Length(*source);
-    dest->data = realloc(dest->data, sourceLength);
+    char* newData = realloc(dest->data, sourceLength);
+    if (newData == NULL)
+    {
+        return;
+    }
+    dest->data = newData;
     memcpy(dest->data, source, sourceLength);
 }
 void utf8charCopy(utf8char* dest, const utf8char* source)
 {
     int32_t sourceLength = getUtf8charLength(*source);
-    dest->data = realloc(dest->data, sourceLength);
-    if (dest->data == NULL)
+    char* newData = realloc(dest->data, sourceLength);
+    if (newData == NULL)
     {
         return;
     }
+    dest->data = newData;
     memcpy(dest->data, source->data, sourceLength);
 }
 

@@ -1,4 +1,5 @@
 #include "keyboard.h"
+#include "mouse/mouse.h"
 
 #define KEY_CTRL(x) ((x) & 0x1F)
 #define KEY_ALT(x) ((x) + 0x1000)
@@ -122,6 +123,31 @@ void keyManage(FoConsole* console)
     timeout(0); //set it to non-blocking immediately.
     keyTryer = getch();
     timeout(-1);
+
+    //Handle mouse events
+    if (vKey == KEY_MOUSE)
+    {
+        FoMouseEventResult result = mouseProcess(vKey);
+
+        switch (result.eventType)
+        {
+            case MOUSE_CLICK:
+                mouseHandleTextAreaClick(console, result.clickedX, result.clickedY);
+                timeout(-1);
+                return;
+            case MOUSE_SCROLL_UP:
+                mouseHandleScrollUp(console);
+                timeout(-1);
+                return;
+            case MOUSE_SCROLL_DOWN:
+                mouseHandleScrollDown(console);
+                timeout(-1);
+                return;
+            default:
+                break;
+        }
+    }
+
     keyWithMode(console, vKey, keyTryer);
 }
 static bool isFunctionKey(int key)
@@ -166,14 +192,7 @@ void singleKeyProcess(FoConsole* console, int key)
         }
         else if (console->focusTarget == FOCUS_TEXTAREA_SELECTION)
         {
-            int amount = console->textArea->selectionArea->selectedAmount;
-            amount = (amount != 0 ? amount : 1);
-            for (int i = 0; i < amount; i++)
-            {
-                strPushBackAscii(singleCharStr, 8);
-                prepareInputStr(console, INPUTSTR_APPEND_SEND, singleCharStr);
-                strClear(singleCharStr);
-            }
+            deleteSelection(console);
             endSelection(console);
         }
     }
@@ -265,11 +284,23 @@ void prepareInputStr(FoConsole* console, InputStrSignal signal, FoString* source
             {
                 strAppendStr(inputStr, source);
             }
-            historyStackPush(console->history, behaviorManage(inputStr, console));
+
+            {
+                Behavior* behavior = behaviorManage(inputStr, console);
+                if (behavior != NULL)
+                {
+                    historyStackPush(console->history, behavior);
+                }
+            }
+            
             strClear(inputStr);
             break;
         case INPUTSTR_SEND:
-            historyStackPush(console->history, behaviorManage(inputStr, console));
+            Behavior* behavior = behaviorManage(inputStr, console);
+            if (behavior != NULL)
+            {
+                historyStackPush(console->history, behavior);
+            }
             strClear(inputStr);
             break;
         case INPUTSTR_CLEAR:
@@ -319,20 +350,16 @@ void functionKey(FoConsole* console, int key)
             gotoTargetLine(console);
             break;
         case KEY_CTRL('x'):
+            //Copy to clipboard first
             FoString* temp = getSelectionAreaStr(console->textArea->selectionArea);
             sendStrInClipboard(console->clipBoard, temp);
             freeStr(temp);
-            sendMessageToStatusBar(console->statusBar, "----------Cut----------", 3);
 
-            FoString* singleCharStr = createStr();
-            int amount = console->textArea->selectionArea->selectedAmount;
-            amount = (amount != 0 ? amount : 1);
-            for (int i = 0; i < amount; i++)
-            {
-                strPushBackAscii(singleCharStr, 8);
-                prepareInputStr(console, INPUTSTR_APPEND_SEND, singleCharStr);
-                strClear(singleCharStr);
-            }
+            //Delete selection safely
+            deleteSelection(console);
+            endSelection(console);
+            console->textArea->textSource->isModified = true;
+            sendMessageToStatusBar(console->statusBar, "----------Cut----------", 3);
             break;
         case KEY_CTRL('c'):
             if (console->focusTarget == FOCUS_TEXTAREA_SELECTION)
@@ -340,6 +367,7 @@ void functionKey(FoConsole* console, int key)
                 FoString* temp = getSelectionAreaStr(console->textArea->selectionArea);
                 sendStrInClipboard(console->clipBoard, temp);
                 freeStr(temp);
+                endSelection(console);
                 sendMessageToStatusBar(console->statusBar, "----------Copied----------", 3);
             }
             break;

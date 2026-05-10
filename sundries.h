@@ -21,6 +21,8 @@ void openWelcomePage(FoConsole* console);
 void openAboutPage(FoConsole* console);
 void openUpdateLogPage(FoConsole* console);
 void gotoTargetLine(FoConsole* console);
+void gotoFileBegin(FoConsole* console);
+void gotoFileEnd(FoConsole* console);
 void findTargetText(FoConsole* console);
 void replaceTargetText(FoConsole* console);
 void startSelection(FoConsole* console);
@@ -32,5 +34,6 @@ void textAreaPageUp(FoTextArea* textArea);
 void textAreaPageDown(FoTextArea* textArea);
 
 void textAreaSelectAll(FoConsole* console);
+void deleteSelection(FoConsole* console);
 
 #endif

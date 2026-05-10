@@ -1,4 +1,5 @@
 #include "sundries.h"
+#include "textfile.h"
 
 #ifdef DOC_PATH
 static const char* WELCOME_DOC_PATH = DOC_PATH "/welcome.txt";
@@ -12,7 +13,7 @@ static const char* UPDATE_LOG_DOC_PATH = "./update.txt";
 
 void statusBarSaveToFile(FoConsole* console)
 {
-    if (console->textArea->textSource->filePath == NULL) //New File
+    if (console->textArea->textSource->filePath == NULL)
     {
         char* path = calloc(console->statusBar->window->w + 1, sizeof(char));
         mvwprintw(console->statusBar->window->win, 2, 0, "Please input the file path.");
@@ -24,8 +25,17 @@ void statusBarSaveToFile(FoConsole* console)
         setTextFilePath(console->textArea->textSource, path);
         free(path);
     }
+    char* expandedPath = expandPath(console->textArea->textSource->filePath);
+    const char* finalPath = expandedPath ? expandedPath : console->textArea->textSource->filePath;
+    if (checkFilePermission(finalPath) == 0)
+    {
+        sendMessageToStatusBar(console->statusBar, "----------ERROR: File is read-only or no write permission----------", 5);
+        if (expandedPath) free(expandedPath);
+        return;
+    }
     writeFile(console->textArea->textSource);
     sendMessageToStatusBar(console->statusBar, "----------File Saved----------", 5);
+    if (expandedPath) free(expandedPath);
 }
 void statusBarLoadFile(FoConsole* console)
 {
@@ -37,7 +47,16 @@ void statusBarLoadFile(FoConsole* console)
         free(path);
         return;
     }
-    tryer = fopen(path, "r");
+    char* expandedPath = expandPath(path);
+    const char* finalPath = expandedPath ? expandedPath : path;
+    if (checkFileReadable(finalPath) == 0)
+    {
+        sendMessageToStatusBar(console->statusBar, "----------ERROR: File is not readable or no permission----------", 5);
+        free(path);
+        if (expandedPath) free(expandedPath);
+        return;
+    }
+    tryer = fopen(finalPath, "r");
     if (tryer == NULL)
     {
         sendMessageToStatusBar(console->statusBar, "----------ERROR: No such file----------", 5);
@@ -55,6 +74,7 @@ void statusBarLoadFile(FoConsole* console)
     }
     setRerenderAll(console);
     free(path);
+    if (expandedPath) free(expandedPath);
 }
 void openTargetFile(FoConsole* console, const char* path)
 {
@@ -134,6 +154,21 @@ void gotoTargetLine(FoConsole* console)
     }
     setRerenderAll(console);
     free(lineNumberStr);
+}
+
+void gotoFileBegin(FoConsole* console)
+{
+    FoLine* firstLine = console->textArea->textSource->firstLine;
+    console->textArea->topLine = firstLine;
+    cursorMoveToLine(console->textArea, firstLine, 0);
+    setRerenderAll(console);
+}
+
+void gotoFileEnd(FoConsole* console)
+{
+    console->textArea->topLine = getLastLine(console->textArea->textSource->firstLine);
+    cursorMoveToLine(console->textArea, console->textArea->topLine, 0);
+    setRerenderAll(console);
 }
 
 static inline void immediateCleanWindowLine(FoWindow* window, int line) //You should only use the function in statusBar control!!!
@@ -409,15 +444,38 @@ void textAreaSelectAll(FoConsole* console)
     {
         startSelection(console);
     }
-    
+
+    FoLine* savedTopLine = console->textArea->topLine;
     console->textArea->selectionArea->anchorLine = console->textArea->textSource->firstLine;
     console->textArea->selectionArea->anchorLineNumber = 0;
     console->textArea->selectionArea->anchorLinePos = 0;
     while (console->textArea->cursor->line->next != NULL)
     {
-        console->textArea->topLine = console->textArea->topLine->next;
         cursorPosChange(console->textArea->cursor, CURSOR_MOVE_DOWN);
     }
     console->textArea->cursor->linePos = strGetLength(console->textArea->cursor->line->lineString);
+    console->textArea->topLine = savedTopLine;
     updateSelectionAreaToCursor(console->textArea->selectionArea, console->textArea->cursor);
+}
+
+void deleteSelection(FoConsole* console)
+{
+    if (console->textArea->selectionArea == NULL)
+    {
+        return;
+    }
+
+    int32_t amount = (console->textArea->selectionArea->selectedAmount >= 0 ?
+                      console->textArea->selectionArea->selectedAmount : 1);
+
+    //Create deletion string with backspace characters
+    FoString* delStr = createStr();
+    for (int32_t i = 0; i < amount; i++)
+    {
+        strPushBackAscii(delStr, 8); //ASCII 8 == BS
+    }
+
+    //Process through history system (this records to undo stack)
+    prepareInputStr(console, INPUTSTR_APPEND_SEND, delStr);
+    freeStr(delStr);
 }

@@ -4,6 +4,21 @@ void initColorPairs()
 {
     //The first pair is default black and white
     init_pair(BUFFERCELL_COLOR_CYAN_AND_WHITE, COLOR_WHITE, COLOR_CYAN);
+    init_pair(BUFFERCELL_COLOR_RED, COLOR_RED, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_GREEN, COLOR_GREEN, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BLUE, COLOR_BLUE, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_CYAN, COLOR_CYAN, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_WHITE, COLOR_WHITE, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_RED, COLOR_RED, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_GREEN, COLOR_GREEN, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_YELLOW, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_BLUE, COLOR_BLUE, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_CYAN, COLOR_CYAN, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_WHITE, COLOR_WHITE, COLOR_BLACK);
+    init_pair(BUFFERCELL_COLOR_BRIGHT_BLACK, COLOR_BLACK, COLOR_BLACK);
 }
 static void clearBufferCell(BufferCell* cell)
 {
@@ -24,13 +39,36 @@ void clearBuffer(Buffer* buffer)
 
 Buffer* createBuffer(int w, int h)
 {
+    if (w <= 0 || h <= 0)
+    {
+        return NULL;
+    }
     Buffer* buffer = malloc(sizeof(Buffer));
+    if (buffer == NULL)
+    {
+        return NULL;
+    }
     buffer->w = w;
     buffer->h = h;
     buffer->bufferArea = malloc(sizeof(BufferCell*) * h);
+    if (buffer->bufferArea == NULL)
+    {
+        free(buffer);
+        return NULL;
+    }
     for (int i = 0; i < h; i++)
     {
         buffer->bufferArea[i] = malloc(sizeof(BufferCell) * w);
+        if (buffer->bufferArea[i] == NULL)
+        {
+            for (int k = 0; k < i; k++)
+            {
+                free(buffer->bufferArea[k]);
+            }
+            free(buffer->bufferArea);
+            free(buffer);
+            return NULL;
+        }
         for (int j = 0; j < w; j++)
         {
             clearBufferCell(&(buffer->bufferArea[i][j]));
@@ -40,6 +78,10 @@ Buffer* createBuffer(int w, int h)
 }
 void freeBuffer(Buffer* buffer)
 {
+    if (buffer == NULL)
+    {
+        return;
+    }
     for (int i = 0; i < buffer->h; i++)
     {
         free(buffer->bufferArea[i]);
@@ -50,7 +92,19 @@ void freeBuffer(Buffer* buffer)
 
 Buffer* copyBuffer(Buffer* source, int w, int h)
 {
+    if (w <= 0 || h <= 0)
+    {
+        return NULL;
+    }
+    if (source == NULL)
+    {
+        return createBuffer(w, h);
+    }
     Buffer* newBuffer = createBuffer(w, h);
+    if (newBuffer == NULL)
+    {
+        return NULL;
+    }
     int smallerW = (source->w < w) ? source->w : w;
     int smallerH = (source->h < h) ? source->h : h;
     for (int i = 0; i < smallerH; i++)

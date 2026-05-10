@@ -23,7 +23,12 @@ bool vecReachLimit(const FoVector* vec)
 }
 void vecDoubleCapacity(FoVector* vec)
 {
-    vec->data = realloc(vec->data, vec->typeLength * vec->capacity * 2);
+    void* newData = realloc(vec->data, vec->typeLength * vec->capacity * 2);
+    if (newData == NULL)
+    {
+        return;
+    }
+    vec->data = newData;
     vec->capacity *= 2;
 }
 
@@ -79,7 +84,12 @@ void vecReserve(FoVector* vec, int32_t newCapacity)
     {
         return;
     }
-    vec->data = realloc(vec->data, newCapacity * vec->typeLength);
+    void* newData = realloc(vec->data, newCapacity * vec->typeLength);
+    if (newData == NULL)
+    {
+        return;
+    }
+    vec->data = newData;
     vec->capacity = newCapacity;
 }
 void vecResize(FoVector* vec, int32_t newSize, void* fillValue)

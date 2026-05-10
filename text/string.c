@@ -224,7 +224,12 @@ bool strReachLimit(const FoString* str, int32_t expectedOffset)
 }
 void strDoubleCapacity(FoString* str)
 {
-    str->data = (char*)realloc(str->data, str->capacity * 2);
+    char* newData = (char*)realloc(str->data, str->capacity * 2);
+    if (newData == NULL)
+    {
+        return;
+    }
+    str->data = newData;
     str->capacity *= 2;
 }
 void strReserve(FoString* str, int32_t new_capacity)
@@ -233,11 +238,12 @@ void strReserve(FoString* str, int32_t new_capacity)
     {
         return;
     }
-    str->data = realloc(str->data, new_capacity);
-    if (str->data == NULL)
+    char* newData = realloc(str->data, new_capacity);
+    if (newData == NULL)
     {
         return;
     }
+    str->data = newData;
     str->capacity = new_capacity;
 }
 utf8char* strAt(const FoString* str, int index)
@@ -296,6 +302,10 @@ void strCopy(FoString* dest, const FoString* source)
     dest->size = source->size;
     dest->length = source->length;
     vecCopy(dest->mapTable, source->mapTable);
+    if (dest->atTemp != NULL)
+    {
+        freeUtf8char(dest->atTemp);
+    }
     uint8_t temp = 'P';
     dest->atTemp = createUtf8char(&temp);
 }

@@ -1,0 +1,45 @@
+#c.syn - C language syntax highlighting
+
+#Single line comment
+"//.*" = GREEN
+
+#Multi-line comment
+"/\*[\s\S]*?\*/" = GREEN
+
+#String literal
+"\"[^\"\\]*(\\.[^\"\\]*)*\"" = YELLOW
+
+#Character literal
+"'[^'\\]*(\\.[^'\\]*)*'" = YELLOW
+
+#Keywords
+"int" = CYAN
+"char" = CYAN
+"float" = CYAN
+"double" = CYAN
+"void" = CYAN
+"return" = MAGENTA
+"if" = MAGENTA
+"else" = MAGENTA
+"for" = MAGENTA
+"while" = MAGENTA
+"do" = MAGENTA
+"switch" = MAGENTA
+"case" = MAGENTA
+"break" = MAGENTA
+"continue" = MAGENTA
+"typedef" = MAGENTA
+"struct" = MAGENTA
+"enum" = MAGENTA
+"union" = MAGENTA
+"static" = MAGENTA
+"extern" = MAGENTA
+"const" = MAGENTA
+"volatile" = MAGENTA
+"unsigned" = CYAN
+"signed" = CYAN
+"long" = CYAN
+"short" = CYAN
+"auto" = MAGENTA
+"register" = MAGENTA
+"sizeof" = MAGENTA

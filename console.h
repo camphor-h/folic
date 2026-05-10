@@ -6,6 +6,8 @@
 #include "keyboard.h"
 #include "clipboard/clipboard.h"
 
+typedef struct SyntaxHighlighter SyntaxHighlighter;
+
 typedef enum ConsoleFocusTarget
 {
     FOCUS_TOOLBAR = 0,
@@ -34,7 +36,9 @@ typedef struct FoConsole
 
     HistoryStack* history;
     HistoryStack* undo;
-    
+
+    SyntaxHighlighter* syntaxHighlighter;
+
 }FoConsole;
 FoConsole* createConsole(FoTextFile* textFile);
 void freeConsole(FoConsole* console);

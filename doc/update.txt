@@ -1,46 +1,32 @@
------Update Log-----Folic v0.12-----
+-----Update Log-----Folic v0.15-----
 
-Hello, All Folic users! Here we have the 0.12 version!
+Greetings! FoLic users! 0.15 version has finally come!
 
-It has been a long time since the last update. I apologize for my
-negligence of Folic. Though I have to balance my life and programming.
-And yet I need face the limit of terminal.
+Just look what we have got:
 
-I do a lot of experiment to ensure that checking combo key at a headless
-console enviroment is possible. So that we could use complex combo key like
-C-S-s to "save as" file.
+--Many useful function
+--Simple syntax hightlight (tought sometimes it looks risible)
+--Check about file permission
+--Automatic completion of parentheses (also sometimes it looks risible)
+--And more...
 
-But I failed. I cannot reach it at a Unix-like system
-(I have tried on both Linux and FreeBSD) which has nographics interface.
-As we know that one of the aim of Folic is 100% terminal-friendly.
-It seems that my project will not have progress any more...
+I have to admit that I'm now mainly use LLM to program...yet, which means
+quicker function implemention but may also brings problems. I feel a
+little that the project was out of my hands. I just hope it's worthwhile...
 
-But, after thinking for days. I think that I still need update this project.
-We cannot check complex combo key, but we still have chance to implement
-the functions!
+There are some bugs that we haven't solve yet. For example, for a very
+uncommon situation, the editor will crash for no reason. You could open
+buffer.c file by the editor and scroll for a while to repeat this bug.
+However I still don't which part wrong. I just hope that nothing will
+be hurt by this bug. I apologize for it.
 
+Somethings that we have tried for a while, but didn't make it work, like
+the support of mouse.
 
+But yet, I have forked a legacy version which still keeps v0.12.01. Just for
+the time that something may go out from control.
 
-The most important part of this update is Selection Area. Though you cannot
-use S+[Arrow Keys] like what you usually do in other complete editors (Because
-the technical limit above-mentioned...). You can still use F2 key (I admit that
-it looks strange) to do it. I used to try C-Space to achive it like Emacs,
-however it didn't work. So I just select F2. You can use C-c C-v C-x too.
-If you are a Mac user. I apology for the key set.
+Anyway, again, that's all. Enjoy the crusty editor! Bye!
 
-And also. Now you don't need to worry about exiting Folic or open new file
-without saving current file. I just added y-n-cancel function, which is small
-but very useful. :)
-
-Now the editor will check the newline of file, instead of assume any file
-has LF. Though you still need to change the newline of the editor with other
-tool. I apology :(
-
-Anyway, that's all. Enjoy the crusty editor! Bye!
-                                                              PolarCamphor
-                                                               2026.01.24
-                                                               
------Update Log-----Folic v0.12.01-----
-
-Fix some bugs.
-Add "Select All" Function , Use C-a
+                                                            PolarCamphor
+                                                             2026.05.10

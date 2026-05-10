@@ -1,13 +1,143 @@
 #include "textfile.h"
 
+#ifndef _WIN32
+#include <errno.h>
+#include <unistd.h>
+#endif
+
 #define MAX3(a, b, c) ((a) > (b) ? ((a) > (c) ? (a) : (c)) : ((b) > (c) ? (b) : (c)))
 
 static char* foStrdup(const char* target)
 {
-    //In some place, it's not easy to use strdup(), because it's not in C standard. So I wrote this.
     char* newStr = malloc(strlen(target) + 1);
     strcpy(newStr, target);
     return newStr;
+}
+
+char* expandPath(const char* path)
+{
+    if (path == NULL || path[0] == '\0')
+    {
+        return NULL;
+    }
+
+    if (path[0] == '~')
+    {
+#ifdef _WIN32
+        char temp[32768];
+        DWORD len = GetEnvironmentVariableA("USERPROFILE", temp, sizeof(temp));
+        if (len == 0)
+        {
+            len = GetEnvironmentVariableA("HOME", temp, sizeof(temp));
+        }
+        if (len == 0)
+        {
+            temp[0] = '\0';
+        }
+#else
+        const char* temp = getenv("HOME");
+        if (temp == NULL)
+        {
+            temp = getenv("USERPROFILE");
+        }
+        if (temp == NULL)
+        {
+            return NULL;
+        }
+#endif
+        size_t homeLen = strlen(temp);
+        size_t pathLen = strlen(path);
+        char* expanded = malloc(homeLen + pathLen);
+        strcpy(expanded, temp);
+        strcpy(expanded + homeLen, path + 1);
+        return expanded;
+    }
+
+    char* dollar = strchr(path, '$');
+    if (dollar != NULL)
+    {
+#ifdef _WIN32
+        char temp[32768];
+        if (GetEnvironmentVariableA("HOME", temp, sizeof(temp)) == 0 &&
+            GetEnvironmentVariableA("USERPROFILE", temp, sizeof(temp)) == 0)
+        {
+            temp[0] = '\0';
+        }
+#else
+        const char* temp = getenv("HOME");
+        if (temp == NULL)
+        {
+            temp = "";
+        }
+#endif
+        char* expanded = malloc(strlen(path) + strlen(temp) + 1);
+        expanded[0] = '\0';
+
+        const char* src = path;
+        char* dst = expanded;
+
+        while (*src)
+        {
+            if (*src == '$' && *(src + 1) == 'H' && *(src + 2) == 'O' && *(src + 3) == 'M' && *(src + 4) == 'E')
+            {
+                strcpy(dst, temp);
+                dst += strlen(temp);
+                src += 5;
+            }
+            else
+            {
+                *dst++ = *src++;
+            }
+        }
+        *dst = '\0';
+        return expanded;
+    }
+
+    return foStrdup(path);
+}
+
+int checkFilePermission(const char* filePath)
+{
+#ifdef _WIN32
+    DWORD attr = GetFileAttributesA(filePath);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        return 1;
+    }
+    if (attr & FILE_ATTRIBUTE_READONLY)
+    {
+        return 0;
+    }
+    return 1;
+#else
+    if (access(filePath, W_OK) == 0)
+    {
+        return 1;
+    }
+    if (errno == ENOENT)
+    {
+        return 1;
+    }
+    return 0;
+#endif
+}
+
+int checkFileReadable(const char* filePath)
+{
+#ifdef _WIN32
+    DWORD attr = GetFileAttributesA(filePath);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        return 0;
+    }
+    return 1;
+#else
+    if (access(filePath, R_OK) == 0)
+    {
+        return 1;
+    }
+    return 0;
+#endif
 }
 
 static uint8_t getFileNameStartIndex(const char* filePath)
@@ -42,19 +172,35 @@ FoTextFile* createTextFile(const char* filePath)
     textFile->firstLine = lineAppend(NULL);
     if (filePath != NULL)
     {
-        textFile->filePath = foStrdup(filePath);
-        textFile->fileName = foStrdup(getFileNameStartIndex(filePath) + filePath);
-        readFile(textFile);
+        char* expandedPath = expandPath(filePath);
+        textFile->filePath = foStrdup(expandedPath ? expandedPath : filePath);
+        textFile->fileName = foStrdup(getFileNameStartIndex(textFile->filePath) + textFile->filePath);
+        FILE* testFile = fopen(textFile->filePath, "rb");
+        if (testFile == NULL)
+        {
+            textFile->isModified = true;
+            textFile->newlineType = DEFAULT_NEWLINE;
+        }
+        else
+        {
+            fclose(testFile);
+            readFile(textFile);
+            textFile->isModified = false;
+        }
+        if (expandedPath != NULL)
+        {
+            free(expandedPath);
+        }
     }
     else
     {
         textFile->fileName = NULL;
         textFile->filePath = NULL;
         textFile->newlineType = DEFAULT_NEWLINE;
+        textFile->isModified = false;
     }
     textFile->fileP = NULL;
 
-    textFile->isModified = false;
     return textFile;
 }
 void setTextFilePath(FoTextFile* textFile, const char* filePath)
@@ -63,8 +209,22 @@ void setTextFilePath(FoTextFile* textFile, const char* filePath)
     {
         return;
     }
-    textFile->filePath = foStrdup(filePath);
-    textFile->fileName = foStrdup(getFileNameStartIndex(filePath) + filePath);
+    char* expandedPath = expandPath(filePath);
+    const char* finalPath = expandedPath ? expandedPath : filePath;
+    if (textFile->filePath != NULL)
+    {
+        free(textFile->filePath);
+    }
+    if (textFile->fileName != NULL)
+    {
+        free(textFile->fileName);
+    }
+    textFile->filePath = foStrdup(finalPath);
+    textFile->fileName = foStrdup(getFileNameStartIndex(finalPath) + finalPath);
+    if (expandedPath != NULL)
+    {
+        free(expandedPath);
+    }
 }
 void freeTextFile(FoTextFile* textFile)
 {
@@ -98,6 +258,12 @@ void readFile(FoTextFile* textFile)
         return;
     }
     textFile->fileP = fopen(textFile->filePath, "rb");
+    if (textFile->fileP == NULL)
+    {
+        //File does not exist, keep empty content
+        //isModified remains false, will create file on first save
+        return;
+    }
     FoLine* curLine = lineAppend(NULL);
     if (textFile->firstLine != NULL)
     {
@@ -197,7 +363,7 @@ void writeFile(FoTextFile* textFile)
         return;
     }
 
-    void (*writeNewline)(FILE*);
+    void (*writeNewline)(FILE*) = writeLF;
     switch (textFile->newlineType)
     {
         case NEWLINE_LF:

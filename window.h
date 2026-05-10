@@ -112,6 +112,10 @@ static inline void freeSelectionArea(FoSelectionArea* selectionArea)
 }
 void updateSelectionAreaToCursor(FoSelectionArea* selectionArea, FoCursor* cursor);
 FoString* getSelectionAreaStr(FoSelectionArea* selectionArea);
+void getSelectionAreaStartEndLine(FoLine** startLine, FoLine** endLine,
+                                  int32_t* startLineNumber, int32_t* endLineNumber,
+                                  int32_t* startLinePos, int32_t* endLinePos,
+                                  FoSelectionArea* selectionArea);
 
 
 typedef struct FoTextArea

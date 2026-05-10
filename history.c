@@ -78,7 +78,21 @@ int historyStackGetLastIndex(HistoryStack* historys)
 }
 Behavior* historyStackTop(HistoryStack* historys)
 {
-    int index = historyStackGetLastIndex(historys);
+    if (historys == NULL || historys->curSize == 0)
+    {
+        return NULL;
+    }
+    
+    int index;
+    if (historys->curIndex > 0)
+    {
+        index = historys->curIndex - 1;
+    }
+    else
+    {
+        index = HISTORY_STACK_MAX - 1;
+    }
+    
     if (historys->behaviors[index] == NULL)
     {
         return NULL;
@@ -128,7 +142,8 @@ void freeBehavior(Behavior* behavior)
 Behavior* behaviorManage(FoString* target, FoConsole* console)
 {
     static FoString* deleted = NULL;
-    Behavior* behavior = createBehavior();
+    static int lastBehaviorTime = 0;
+
     if (deleted == NULL)
     {
         deleted = createStr();
@@ -140,22 +155,74 @@ Behavior* behaviorManage(FoString* target, FoConsole* console)
 
     behaviorKind bKind = strAt(target, 0)->data[0] == 8 ? BEHAVIOR_REMOVE : BEHAVIOR_INSERT; //ASCII 8 == BS
 
+    int currentTime = clock() / (CLOCKS_PER_SEC / 1000); //Milliseconds
+    bool shouldMerge = false;
+
+    //Check if we should merge with last behavior (within 500ms)
+    if (console->history->curSize > 0)
+    {
+        Behavior* lastBehavior = historyStackTop(console->history);
+        if (lastBehavior && lastBehavior->bKind == bKind &&
+            currentTime - lastBehaviorTime < 500)
+        {
+            shouldMerge = true;
+        }
+    }
+
     if (bKind == BEHAVIOR_INSERT)
     {
-        inputToCursorLine(console->textArea, target);
-        behavior->lineIndex = console->textArea->cursor->lineNumber;
+        int prevLineNum = console->textArea->cursor->lineNumber;
+        keyboardInput(console->textArea, target);
+
+        Behavior* lastBehavior = historyStackTop(console->history);
+        if (shouldMerge && lastBehavior && prevLineNum == lastBehavior->lineIndex)
+        {
+            strAppendStr(lastBehavior->behaviorString, target);
+            lastBehavior->pos = console->textArea->cursor->linePos;
+            lastBehaviorTime = currentTime;
+            return NULL; //Don't push new behavior
+        }
+
+        Behavior* behavior = createBehavior();
+        behavior->lineIndex = prevLineNum;
         behavior->pos = console->textArea->cursor->linePos;
         behavior->bKind = BEHAVIOR_INSERT;
         strCopy(behavior->behaviorString, target);
+        lastBehaviorTime = currentTime;
+        return behavior;
     }
     else if (bKind == BEHAVIOR_REMOVE)
     {
-        strAppendStr(deleted, backspaceToCursorLine(console->textArea));
-        behavior->lineIndex = console->textArea->cursor->lineNumber;
-        behavior->pos = console->textArea->cursor->linePos;
+        int prevLineNum = console->textArea->cursor->lineNumber;
+        int prevPos = console->textArea->cursor->linePos;
+        int deleteCount = strGetLength(target);
+        deleted = rawDelete(console->textArea, deleteCount);
+        //Store in reverse order for undo (as they were deleted)
+        strReverse(deleted);
+
+        Behavior* lastBehavior = historyStackTop(console->history);
+        if (shouldMerge && lastBehavior && prevLineNum == lastBehavior->lineIndex)
+        {
+            //Prepend newly deleted content
+            FoString* temp = createStr();
+            strAppendStr(temp, deleted);
+            strAppendStr(temp, lastBehavior->behaviorString);
+            strClear(lastBehavior->behaviorString);
+            strCopy(lastBehavior->behaviorString, temp);
+            freeStr(temp);
+            //pos should be the start of all deleted content
+            lastBehavior->pos = prevPos;
+            lastBehaviorTime = currentTime;
+            return NULL;
+        }
+
+        Behavior* behavior = createBehavior();
+        behavior->lineIndex = prevLineNum;
+        behavior->pos = prevPos;
         behavior->bKind = BEHAVIOR_REMOVE;
         strCopy(behavior->behaviorString, deleted);
-        strReverse(behavior->behaviorString);
+        lastBehaviorTime = currentTime;
+        return behavior;
     }
 
     if (console->textArea->textSource->isModified == false)
@@ -163,7 +230,7 @@ Behavior* behaviorManage(FoString* target, FoConsole* console)
         console->textArea->textSource->isModified = true;
     }
     clearHistoryStack(console->undo);
-    return behavior;
+    return NULL;
 }
 void undoBehavior(FoConsole* console)
 {
@@ -173,6 +240,11 @@ void undoBehavior(FoConsole* console)
         return;
     }
     FoLine* curLine = getLineWithFirstLine(behavior->lineIndex, console->textArea->textSource->firstLine);
+    if (curLine == NULL)
+    {
+        freeBehavior(behavior);
+        return;
+    }
     historyStackPop(console->history);
     if (behavior->bKind == BEHAVIOR_INSERT) //Undo - Delete Mode
     {
@@ -184,7 +256,11 @@ void undoBehavior(FoConsole* console)
     }
     else if (behavior->bKind == BEHAVIOR_REMOVE) //Undo - Insert Mode
     {
-        cursorMoveToLine(console->textArea, curLine, behavior->pos);
+        int32_t targetPos = behavior->pos;
+        int32_t lineLen = strGetLength(curLine->lineString);
+        if (targetPos > lineLen) targetPos = lineLen;
+        
+        cursorMoveToLine(console->textArea, curLine, targetPos);
         inputToCursorLine(console->textArea, behavior->behaviorString);
     }
     historyStackPush(console->undo, behavior);
@@ -197,6 +273,11 @@ void redoBehavior(FoConsole* console)
         return;
     }
     FoLine* curLine = getLineWithFirstLine(behavior->lineIndex, console->textArea->textSource->firstLine);
+    if (curLine == NULL)
+    {
+        freeBehavior(behavior);
+        return;
+    }
     historyStackPop(console->undo);
     if (behavior->bKind == BEHAVIOR_INSERT) //Redo - Insert Mode
     {
@@ -205,7 +286,7 @@ void redoBehavior(FoConsole* console)
     }
     else if (behavior->bKind == BEHAVIOR_REMOVE) //Redo - Delete Mode
     {
-        cursorMoveToLine(console->textArea, curLine, behavior->pos);
+        cursorMoveToLine(console->textArea, curLine, behavior->pos + strGetLength(behavior->behaviorString));
         int deletedLength = strGetLength(behavior->behaviorString);
         for (int i = 0; i < deletedLength; i++)
         {

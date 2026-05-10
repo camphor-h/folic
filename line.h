@@ -27,9 +27,15 @@ int getLineIndentation(FoLine* line);
 
 void inputToLine(FoLine* line, FoString* sourceStr, int32_t position);
 void inputToCursorLine(FoTextArea* textArea, FoString* sourceStr);
-FoString* backspaceToLine(FoLine* line, int32_t position);
 FoString* backspaceToCursorLine(FoTextArea* textArea);
 //if you want just input string to the line that the cursor situated. I recommended you use it. Because it will change the position of cursor automatically.
+
+//Raw input layer - direct insert/delete without any special handling
+void rawInsert(FoTextArea* textArea, FoString* sourceStr);
+FoString* rawDelete(FoTextArea* textArea, int32_t count);
+
+//Keyboard input layer - handles indentation and other special logic, then calls raw input
+void keyboardInput(FoTextArea* textArea, FoString* sourceStr);
 
 FoLine* createLine();
 FoLine* lineAppend(FoLine* curNode);

@@ -2,7 +2,7 @@
 
 static const char* toolBarWidgetNames[] = {" File ", " Edit ", " Help "};
 
-static const FoToolBarWidgetOptionRaw toolBarFileOptions[] = {{"New  (C-n)", initTextAreaAndCreateNewFile}, {"Open (C-o)", statusBarLoadFile}, {"Save (C-s)", statusBarSaveToFile}, {"Save as", statusBarSaveAsFile}, {"Quit (C-q)", folicQuit}};
+static const FoToolBarWidgetOptionRaw toolBarFileOptions[] = {{"New  (C-n)", initTextAreaAndCreateNewFile}, {"Open (C-o)", statusBarLoadFile}, {"Save (C-s)", statusBarSaveToFile}, {"Save as", statusBarSaveAsFile}, {"Quit (C-q)", folicQuit}, {"Goto File Begin", gotoFileBegin}, {"Goto File End", gotoFileEnd}};
 static const FoToolBarWidgetOptionRaw toolBarEditOptions[] = {{"Undo (C-z)", undoBehavior}, {"Redo (C-y)", redoBehavior}, {"Find (C-f)", findTargetText}, {"Replace (C-h)", replaceTargetText}, {"Selection", startSelection}, {"Select All (C-a)", textAreaSelectAll}};
 static const FoToolBarWidgetOptionRaw toolBarHelpOptions[] = {{"Welcome", openWelcomePage}, {"About", openAboutPage}, {"Update Log", openUpdateLogPage}};
 
@@ -123,9 +123,24 @@ void cursorPosChangeUpdate(FoTextArea* textArea, cursorPosChangeSignal signal)
 
 FoWindow* createWindow(int x, int y, int w, int h)
 {
+    if (w <= 0 || h <= 0)
+    {
+        return NULL;
+    }
     FoWindow* window = malloc(sizeof(FoWindow));
     window->win = newwin(h, w, y, x);
+    if (window->win == NULL)
+    {
+        free(window);
+        return NULL;
+    }
     window->buffer = createBuffer(w, h);
+    if (window->buffer == NULL)
+    {
+        delwin(window->win);
+        free(window);
+        return NULL;
+    }
     window->signal = RERENDER_ALL;
     window->x = x;
     window->y = y;
@@ -135,10 +150,29 @@ FoWindow* createWindow(int x, int y, int w, int h)
 }
 void resizeWindow(FoWindow* window, int x, int y, int w, int h)
 {
-    Buffer* newBuffer = copyBuffer(window->buffer, w, h);
-    freeBuffer(window->buffer);
-    delwin(window->win);
-    window->win = newwin(h, w, y, x);
+    if (window == NULL || w <= 0 || h <= 0)
+    {
+        return;
+    }
+    Buffer* oldBuffer = window->buffer;
+    WINDOW* oldWin = window->win;
+
+    Buffer* newBuffer = copyBuffer(oldBuffer, w, h);
+    WINDOW* newWin = newwin(h, w, y, x);
+
+    if (newBuffer == NULL || newWin == NULL)
+    {
+        freeBuffer(newBuffer);
+        delwin(newWin);
+        window->buffer = NULL;
+        window->win = NULL;
+        return;
+    }
+
+    freeBuffer(oldBuffer);
+    delwin(oldWin);
+
+    window->win = newWin;
     window->buffer = newBuffer;
     window->signal = RERENDER_ALL;
     window->x = x;
@@ -148,7 +182,15 @@ void resizeWindow(FoWindow* window, int x, int y, int w, int h)
 }
 void freeWindow(FoWindow* window)
 {
+    if (window == NULL)
+    {
+        return;
+    }
     delwin(window->win);
+    if (window->buffer != NULL)
+    {
+        freeBuffer(window->buffer);
+    }
     free(window);
 }
 void renderToConsole(FoWindow* window, FoConsole* console)
@@ -192,6 +234,11 @@ FoToolBarWidget* createToolBarWidget(const char* name, int optionAmount, const F
         vecPushBack(tbWidget->options, &temp);
     }
     tbWidget->window = createWindow(x, y, w, h);
+    if (tbWidget->window == NULL)
+    {
+        free(tbWidget);
+        return NULL;
+    }
 
     int maxOptionlength = -1;
     for (int i = 0; i < vecGetSize(tbWidget->options); i++)
@@ -206,6 +253,10 @@ FoToolBarWidget* createToolBarWidget(const char* name, int optionAmount, const F
         return NULL;
     }
     tbWidget->listWindow = createWindow(tbWidget->window->x, tbWidget->window->y + 1, maxOptionlength + 2, vecGetSize(tbWidget->options) + 1);
+    if (tbWidget->listWindow == NULL)
+    {
+        return NULL;
+    }
 
     tbWidget->selectedOption = 0;
 
@@ -213,16 +264,15 @@ FoToolBarWidget* createToolBarWidget(const char* name, int optionAmount, const F
 }
 void freeToolBarWidget(FoToolBarWidget* tbWidget)
 {
+    if (tbWidget == NULL) return;
     freeStr(tbWidget->name);
     for (int i = 0; i < vecGetSize(tbWidget->options); i++)
     {
         freeToolBarWidgetOption(*(FoToolBarWidgetOption**)vecAt(tbWidget->options, i));
     }
     freeVec(tbWidget->options);
-    if (tbWidget->listWindow != NULL)
-    {
-        freeWindow(tbWidget->listWindow);
-    }
+    freeWindow(tbWidget->window);
+    freeWindow(tbWidget->listWindow);
     free(tbWidget);
 }
 void toolBarWidgetRender(FoToolBarWidget* tbWidget)
@@ -393,7 +443,7 @@ static void selectionAreaSwapStartAndEnd(FoSelectionArea* selectionArea)
     selectionArea->endLinePos = tempLinePos;
 }
 */
-static void getSelectionAreaStartEndLine(FoLine** startLine, FoLine** endLine_,
+void getSelectionAreaStartEndLine(FoLine** startLine, FoLine** endLine_,
                                          int32_t* startLineNumber, int32_t* endLineNumber_,
                                          int32_t* startLinePos, int32_t* endLinePos_,
                                          FoSelectionArea* selectionArea)
@@ -475,24 +525,48 @@ FoString* getSelectionAreaStr(FoSelectionArea* selectionArea)
     getSelectionAreaStartEndLine(&startLine, &endLine, &startLineNumber, &endLineNumber,
                                  &startLinePos, &endLinePos, selectionArea);
 
+    FoString* str = createStr();
+
     if (startLine == endLine)
     {
-        return strSubStr(startLine->lineString, startLinePos, endLinePos - 1);
+        //Single line: from startLinePos to endLinePos (exclusive)
+        FoString* temp = strSubStr(startLine->lineString, startLinePos, endLinePos - 1);
+        if (temp != NULL)
+        {
+            strAppendStr(str, temp);
+            freeStr(temp);
+        }
+        return str;
     }
-    FoString* str = createStr();
-    FoString* temp = strSubStr(startLine->lineString, startLinePos, strGetLength(startLine->lineString) - 1);
-    strAppendStr(str, temp);
 
+    //Multi-line case
+    //First line: from startLinePos to end of line
+    FoString* temp = strSubStr(startLine->lineString, startLinePos, strGetLength(startLine->lineString) - 1);
+    if (temp != NULL)
+    {
+        strAppendStr(str, temp);
+        freeStr(temp);
+    }
+    //Add newline after first line
+    strPushBackAscii(str, '\n');
+
+    //Middle lines: full line content with newline
     FoLine* curLine = startLine->next;
     while (curLine != endLine)
     {
         strAppendStr(str, curLine->lineString);
+        strPushBackAscii(str, '\n');
         curLine = curLine->next;
     }
-    strClear(temp);
-    temp = strSubStr(endLine->lineString, 0, endLinePos);
-    strAppendStr(str, temp);
-    freeStr(temp);
+
+    //Last line: from beginning to endLinePos (exclusive)
+    temp = strSubStr(endLine->lineString, 0, endLinePos - 1);
+    if (temp != NULL)
+    {
+        strAppendStr(str, temp);
+        freeStr(temp);
+    }
+
     return str;
 }
 void updateSelectionAreaToCursor(FoSelectionArea* selectionArea, FoCursor* cursor)
@@ -507,6 +581,11 @@ FoTextArea* createTextArea(FoTextFile* textFile, int x, int y, int w, int h)
 {
     FoTextArea* textArea = malloc(sizeof(FoTextArea));
     textArea->window = createWindow(x, y, w, h);
+    if (textArea->window == NULL)
+    {
+        free(textArea);
+        return NULL;
+    }
     if (textFile == NULL)
     {
         textArea->textSource = createTextFile(NULL);
@@ -527,15 +606,12 @@ FoTextArea* createTextArea(FoTextFile* textFile, int x, int y, int w, int h)
 }
 void freeTextArea(FoTextArea* textArea)
 {
+    if (textArea == NULL) return;
     freeWindow(textArea->window);
-    if (textArea->lineNumbers != NULL)
-    {
-        freeLineNumbers(textArea->lineNumbers);
-    }
-    if (textArea->selectionArea != NULL)
-    {
-        freeSelectionArea(textArea->selectionArea);
-    }
+    freeLineNumbers(textArea->lineNumbers);
+    freeSelectionArea(textArea->selectionArea);
+    freeHistoryStack(textArea->history);
+    freeHistoryStack(textArea->undo);
     free(textArea);
 }
 static void _renderSelectionArea(FoTextArea* textArea)
@@ -667,7 +743,7 @@ static void _renderTextArea(FoTextArea* textArea)
         textArea->window->signal = RERENDER_CONTENT;
     }
 
-    if (textArea->lineNumbers != NULL || textArea->lineNumbers->window->signal != RERENDER_ALL)
+    if (textArea->lineNumbers != NULL && textArea->lineNumbers->window->signal != RERENDER_ALL)
     {
         textArea->lineNumbers->window->signal = RERENDER_CONTENT;
         renderLineNumbers(textArea->lineNumbers, textArea);
@@ -826,7 +902,7 @@ static void renderStatus(FoStatusBar* statusBar, FoTextArea* textArea)
         statusCStr[lengthOfFileName] = '*';
         lengthOfFileName++;
     }
-    char const* newlineT;
+    char const* newlineT = newlineT_LF;
     switch (textArea->textSource->newlineType)
     {
         case NEWLINE_CR:

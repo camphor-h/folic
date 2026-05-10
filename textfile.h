@@ -31,4 +31,9 @@ void setTextFilePath(FoTextFile* textFile, const char* filePath);
 void freeTextFile(FoTextFile* textFile);
 void writeFile(FoTextFile* textFile);
 void readFile(FoTextFile* textFile);
+int checkFileReadable(const char* filePath);
+char* expandPath(const char* path);
+
+int checkFilePermission(const char* filePath);
+
 #endif

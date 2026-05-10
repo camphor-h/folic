@@ -1,10 +1,19 @@
 #include "console.h"
+#include "syntax.h"
 FoConsole* createConsole(FoTextFile* textFile)
 {
     FoConsole* console = malloc(sizeof(FoConsole));
+    if (console == NULL)
+    {
+        return NULL;
+    }
     getmaxyx(stdscr, console->h, console->w);
-    //mvwprintw(stdscr, 0, 0, "width = %d, height = %d", console->w, console->h);getch();
     console->buffer = createBuffer(console->w, console->h);
+    if (console->buffer == NULL)
+    {
+        free(console);
+        return NULL;
+    }
     console->toolBar = createToolBar(0, 0, console->w, 2);
     console->toolWidget = NULL;
     console->textArea = createTextArea(textFile, 3, 2, console->w - 3, console->h - 4 - 2);
@@ -14,6 +23,7 @@ FoConsole* createConsole(FoTextFile* textFile)
     console->undo = createHistoryStack();
     console->focusTarget = FOCUS_TEXTAREA;
     console->clipBoard = createClipboard();
+    console->syntaxHighlighter = createSyntaxHighlighter(NULL);
     move(console->textArea->window->y, console->textArea->window->x);
     return console;
 }
@@ -24,6 +34,7 @@ void freeConsole(FoConsole* console)
     freeStatusBar(console->statusBar);
     freeBuffer(console->buffer);
     freeClipboard(console->clipBoard);
+    freeSyntaxHighlighter(console->syntaxHighlighter);
     free(console);
 }
 void renderAll(FoConsole* console)
@@ -32,6 +43,7 @@ void renderAll(FoConsole* console)
     renderToolBar(console->toolBar);
     renderLineNumbers(console->textArea->lineNumbers, console->textArea);
     renderTextArea(console->textArea);
+    syntaxHighlightTextArea(console->syntaxHighlighter, console->textArea);
     renderStatusBar(console->statusBar, console->textArea);
     renderDisplay(console);
     cursorUpdate(console->textArea);
@@ -49,8 +61,17 @@ static void printBufferCell(FoWindow* window, int x, int y)
 }
 void printWindow(FoWindow* window, bool isImmediate)
 {
+    if (window == NULL || window->win == NULL || window->buffer == NULL)
+    {
+        return;
+    }
+    if (window->w <= 0 || window->h <= 0)
+    {
+        return;
+    }
     if (window->signal != NOTHING_TO_RENDER)
     {
+        werase(window->win);
         for (int y = 0; y < window->h; y++)
         {
             for (int x = 0; x < window->w; x++)
@@ -125,19 +146,44 @@ int foGetline(FoWindow* window, int line, int startPosX, char* buffer, int maxCh
     int prevY;
     getyx(stdscr, prevY, prevX);
     int prevCursor = curs_set(1);
-    move(line + window->y, startPosX + window->x);
 
-    maxCharacter = startPosX + maxCharacter + 1 > window->w ? window->w : maxCharacter;
+    int bufferSize = (maxCharacter > 1024) ? maxCharacter : 1024;
+    char* inputBuffer = malloc(bufferSize);
+    inputBuffer[0] = '\0';
     int inputed = 0;
-    int inputPos = inputed;
+    int inputPos = 0;
     int temp;
-    buffer[0] = '\0';
-    while (inputed < maxCharacter - 1)
+    int displayOffset = 0;
+
+    while (1)
     {
+        int displayLength = window->w - startPosX;
+        if (inputed > displayLength)
+        {
+            if (inputPos < displayOffset)
+            {
+                displayOffset = inputPos;
+            }
+            else if (inputPos > displayOffset + displayLength - 1)
+            {
+                displayOffset = inputPos - displayLength + 1;
+            }
+        }
+        else
+        {
+            displayOffset = 0;
+        }
+
+        int visibleLength = inputed - displayOffset;
+        if (visibleLength > displayLength)
+        {
+            visibleLength = displayLength;
+        }
+
         move(line + window->y, startPosX + window->x);
         clrtoeol();
-        printw("%s", buffer);
-        move(line + window->y, startPosX + window->x + inputPos);
+        printw("%.*s", visibleLength, inputBuffer + displayOffset);
+        move(line + window->y, startPosX + window->x + inputPos - displayOffset);
         wrefresh(window->win);
 
         temp = getch();
@@ -145,7 +191,7 @@ int foGetline(FoWindow* window, int line, int startPosX, char* buffer, int maxCh
         {
             break;
         }
-        else if (temp == KEY_LEFT && inputed > 0 && inputPos > 0)
+        else if (temp == KEY_LEFT && inputPos > 0)
         {
             inputPos--;
         }
@@ -153,41 +199,58 @@ int foGetline(FoWindow* window, int line, int startPosX, char* buffer, int maxCh
         {
             inputPos++;
         }
-        else if (temp == KEY_BACKSPACE && inputed != 0 && inputPos != 0)
+        else if (temp == KEY_BACKSPACE && inputPos > 0)
         {
-            memmove(buffer + inputPos - 1, buffer + inputPos, inputed - inputPos + 1);
+            memmove(inputBuffer + inputPos - 1, inputBuffer + inputPos, inputed - inputPos + 1);
             inputed--;
             inputPos--;
         }
         else if (temp == KEY_DC && inputPos < inputed)
         {
-            memmove(buffer + inputPos, buffer + inputPos + 1, inputed - inputPos);
+            memmove(inputBuffer + inputPos, inputBuffer + inputPos + 1, inputed - inputPos);
             inputed--;
         }
-        else if (temp == KEY_HOME)
+        else if (temp == KEY_HOME || temp == 1) //KEY_HOME or Ctrl+A
         {
             inputPos = 0;
         }
-        else if (temp == KEY_END)
+        else if (temp == KEY_END || temp == 5) //KEY_END or Ctrl+E
         {
             inputPos = inputed;
         }
         else if (temp == 27) //ESC
         {
+            free(inputBuffer);
             return -1;
         }
         else if (temp >= 32 && temp <= 126)
         {
+            if (inputed + 1 >= bufferSize)
+            {
+                bufferSize *= 2;
+                inputBuffer = realloc(inputBuffer, bufferSize);
+            }
             if (inputPos < inputed)
             {
-                memmove(buffer + inputPos + 1, buffer + inputPos, inputed - inputPos + 1);
+                memmove(inputBuffer + inputPos + 1, inputBuffer + inputPos, inputed - inputPos + 1);
             }
-            buffer[inputPos] = temp;
+            inputBuffer[inputPos] = temp;
             inputed++;
             inputPos++;
         }
     }
-    buffer[inputed] = '\0';
+
+    inputBuffer[inputed] = '\0';
+    if (inputed < maxCharacter)
+    {
+        memcpy(buffer, inputBuffer, inputed + 1);
+    }
+    else
+    {
+        memcpy(buffer, inputBuffer, maxCharacter - 1);
+        buffer[maxCharacter - 1] = '\0';
+    }
+    free(inputBuffer);
     curs_set(prevCursor);
     move(prevY, prevX);
     return inputed;

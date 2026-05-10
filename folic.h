@@ -2,6 +2,7 @@
 #define __FOLIC__
 
 #ifdef _WIN32
+#include <windows.h>
 #include <ncursesw/ncurses.h>
 #include <ncursesw/menu.h>
 #else
