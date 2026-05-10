@@ -3,11 +3,7 @@ CFLAGS = -std=c99 -Wall -Wextra
 
 UNAME_S := $(shell uname -s)
 
-ifeq ($(UNAME_S),Windows)
-    LDFLAGS = -lm -lncursesw -lmenuw -lregex
-else ifeq ($(UNAME_S),Msys)
-    LDFLAGS = -lm -lncursesw -lmenuw -lregex
-else ifeq ($(UNAME_S),CYGWIN)
+ifneq ($(filter Windows% MINGW% MSYS% CYGWIN%,$(UNAME_S)),)
     LDFLAGS = -lm -lncursesw -lmenuw -lregex
 else
     LDFLAGS = -lm -lncursesw -lmenuw
