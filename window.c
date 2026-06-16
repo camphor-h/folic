@@ -922,11 +922,19 @@ static void renderStatus(FoStatusBar* statusBar, FoTextArea* textArea)
     int lineNum = getLineNumberWithFirstLine(textArea->cursor->line, textArea->textSource->firstLine) + 1;
     int columnNum = textArea->cursor->linePos + 1;
     int renderStartPos = (statusBar->window->w) - getNumberLength(columnNum) - getNumberLength(lineNum) - (sizeof("Line:") - 1) - (sizeof("Column:") - 1) - (sizeof("   ") - 1);
+    if (renderStartPos < 0)
+    {
+        renderStartPos = 0;
+    }
     if (textArea->selectionArea != NULL)
     {
         int selectedNum = textArea->selectionArea->selectedAmount;
         renderStartPos -= (sizeof("(Selected:)") - 1);
         renderStartPos -= getNumberLengthZeroSafe(selectedNum);
+        if (renderStartPos < 0)
+        {
+            renderStartPos = 0;
+        }
         sprintf(statusCStr + renderStartPos, "Line:%d   Column:%d(Selected:%d)", lineNum, columnNum, selectedNum);
     }
     else
