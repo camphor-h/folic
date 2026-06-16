@@ -46,11 +46,11 @@ void freeAllLineWithFirstLine(FoLine* firstLine);
 void freeAllLineWithCurrentLine(FoLine* curLine);
 static inline int getNumberLength(int number)
 {
-    return (number > 0 ? (log10(number) + 1) : 1);
+    return (int)(log10(number) + 1);
 }
 static inline int getNumberLengthZeroSafe(int number)
 {
-    return getNumberLength(number);
+    return (number != 0 ? (int)(log10(number) + 1) : 1);
 }
 
 

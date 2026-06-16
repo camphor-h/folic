@@ -155,7 +155,7 @@ Behavior* behaviorManage(FoString* target, FoConsole* console)
 
     behaviorKind bKind = strAt(target, 0)->data[0] == 8 ? BEHAVIOR_REMOVE : BEHAVIOR_INSERT; //ASCII 8 == BS
 
-    int currentTime = clock() / (CLOCKS_PER_SEC / 1000); //Milliseconds
+    int currentTime = (int)((long long)clock() * 1000 / CLOCKS_PER_SEC);
     bool shouldMerge = false;
 
     //Check if we should merge with last behavior (within 500ms)
